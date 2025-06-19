@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Horas de Trabajo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #333;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    .delete-btn {
+      background-color: #f44336;
+    }
+    .delete-btn:hover {
+      background-color: #da190b;
+    }
+    #resumen {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #e0f7fa;
+      border-radius: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .trabajos-list {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gestión de Horas de Trabajo</h1>
+  <div class="container">
+    <h2>Administrar Trabajos</h2>
+    <div class="form-group">
+      <label for="nombreTrabajo">Nombre del trabajo:</label>
+      <input type="text" id="nombreTrabajo" placeholder="Ej: Limpieza">
+    </div>
+    <div class="form-group">
+      <label for="precioTrabajo">Precio por hora (€):</label>
+      <input type="number" id="precioTrabajo" step="0.01" min="0" placeholder="Ej: 10.50">
+      <button onclick="agregarTrabajo()">Agregar Trabajo</button>
+    </div>
+    <div class="trabajos-list">
+      <h3>Lista de Trabajos</h3>
+      <table id="tablaTrabajos">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Precio por hora (€)</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody id="listaTrabajos"></tbody>
+      </table>
+    </div>
+
+    <h2>Registrar Horas</h2>
+    <div class="form-group">
+      <label for="seleccionarTrabajo">Seleccionar trabajo:</label>
+      <select id="seleccionarTrabajo"></select>
+    </div>
+    <div class="form-group">
+      <label for="fecha">Fecha:</label>
+      <input type="date" id="fecha">
+    </div>
+    <div class="form-group">
+      <label for="horas">Horas trabajadas:</label>
+      <input type="number" id="horas" min="0" step="0.5" placeholder="Ej: 4">
+      <button onclick="agregarHoras()">Agregar Horas</button>
+    </div>
+
+    <div id="resumen">
+      <h3>Resumen Mensual</h3>
+      <div id="resumenTrabajos"></div>
+      <p id="totalHoras">Total horas: 0</p>
+      <p id="totalGanado">Total ganado: 0 €</p>
+    </div>
+
+    <table id="tablaHoras">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Trabajo</th>
+          <th>Horas</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody id="listaHoras"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let trabajos = JSON.parse(localStorage.getItem('trabajos')) || [];
+    let registros = JSON.parse(localStorage.getItem('registros')) || [];
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('fecha').value = hoy;
+
+    function actualizarSelectorTrabajos() {
+      const select = document.getElementById('seleccionarTrabajo');
+      select.innerHTML = '<option value="">Seleccione un trabajo</option>';
+      trabajos.forEach(trabajo => {
+        const option = document.createElement('option');
+        option.value = trabajo.nombre;
+        option.textContent = trabajo.nombre;
+        select.appendChild(option);
+      });
+    }
+
+    function agregarTrabajo() {
+      const nombre = document.getElementById('nombreTrabajo').value.trim();
+      const precio = parseFloat(document.getElementById('precioTrabajo').value);
+
+      if (!nombre || isNaN(precio) || precio <= 0) {
+        alert('Por favor, ingrese un nombre y un precio por hora válidos.');
+        return;
+      }
+
+      if (trabajos.some(t => t.nombre === nombre)) {
+        alert('Ya existe un trabajo con ese nombre.');
+        return;
+      }
+
+      trabajos.push({ nombre, precio });
+      localStorage.setItem('trabajos', JSON.stringify(trabajos));
+      document.getElementById('nombreTrabajo').value = '';
+      document.getElementById('precioTrabajo').value = '';
+      actualizarTablaTrabajos();
+      actualizarSelectorTrabajos();
+    }
+
+    function eliminarTrabajo(nombre) {
+      if (registros.some(r => r.trabajo === nombre)) {
+        alert('No se puede eliminar este trabajo porque tiene horas registradas.');
+        return;
+      }
+      trabajos = trabajos.filter(t => t.nombre !== nombre);
+      localStorage.setItem('trabajos', JSON.stringify(trabajos));
+      actualizarTablaTrabajos();
+      actualizarSelectorTrabajos();
+    }
+
+    function actualizarTablaTrabajos() {
+      const listaTrabajos = document.getElementById('listaTrabajos');
+      listaTrabajos.innerHTML = '';
+      trabajos.forEach(trabajo => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${trabajo.nombre}</td>
+          <td>${trabajo.precio.toFixed(2)}</td>
+          <td><button class="delete-btn" onclick="eliminarTrabajo('${trabajo.nombre}')">Eliminar</button></td>
+        `;
+        listaTrabajos.appendChild(row);
+      });
+    }
+
+    function agregarHoras() {
+      const trabajo = document.getElementById('seleccionarTrabajo').value;
+      const fecha = document.getElementById('fecha').value;
+      const horas = parseFloat(document.getElementById('horas').value);
+
+      if (!trabajo || !fecha || isNaN(horas) || horas < 0) {
+        alert('Por favor, seleccione un trabajo, ingrese una fecha y horas válidas.');
+        return;
+      }
+
+      registros.push({ trabajo, fecha, horas });
+      localStorage.setItem('registros', JSON.stringify(registros));
+      document.getElementById('horas').value = '';
+      actualizarTablaHoras();
+      actualizarResumen();
+    }
+
+    function eliminarRegistro(index) {
+      registros.splice(index, 1);
+      localStorage.setItem('registros', JSON.stringify(registros));
+      actualizarTablaHoras();
+      actualizarResumen();
+    }
+
+    function actualizarTablaHoras() {
+      const listaHoras = document.getElementById('listaHoras');
+      listaHoras.innerHTML = '';
+      registros.forEach((registro, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${registro.fecha}</td>
+          <td>${registro.trabajo}</td>
+          <td>${registro.horas}</td>
+          <td><button class="delete-btn" onclick="eliminarRegistro(${index})">Eliminar</button></td>
+        `;
+        listaHoras.appendChild(row);
+      });
+    }
+
+    function actualizarResumen() {
+      const fechaActual = new Date();
+      const mesActual = fechaActual.getMonth();
+      const anioActual = fechaActual.getFullYear();
+
+      const resumenTrabajos = document.getElementById('resumenTrabajos');
+      resumenTrabajos.innerHTML = '<h4>Por Trabajo:</h4>';
+      let totalHoras = 0;
+      let totalGanado = 0;
+
+      trabajos.forEach(trabajo => {
+        const horasMes = registros
+          .filter(r => {
+            const fechaReg = new Date(r.fecha);
+            return r.trabajo === trabajo.nombre &&
+                   fechaReg.getMonth() === mesActual &&
+                   fechaReg.getFullYear() === anioActual;
+          })
+          .reduce((total, r) => total + r.horas, 0);
+
+        const ganadoMes = horasMes * trabajo.precio;
+        totalHoras += horasMes;
+        totalGanado += ganadoMes;
+
+        if (horasMes > 0) {
+          const p = document.createElement('p');
+          p.textContent = `${trabajo.nombre}: ${horasMes} horas, ${ganadoMes.toFixed(2)} €`;
+          resumenTrabajos.appendChild(p);
+        }
+      });
+
+      document.getElementById('totalHoras').textContent = `Total horas: ${totalHoras}`;
+      document.getElementById('totalGanado').textContent = `Total ganado: ${totalGanado.toFixed(2)} €`;
+    }
+
+    // Inicializar al cargar la página
+    actualizarTablaTrabajos();
+    actualizarSelectorTrabajos();
+    actualizarTablaHoras();
+    actualizarResumen();
+  </script>
+</body>
+</html>
